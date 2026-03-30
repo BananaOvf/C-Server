@@ -54,25 +54,27 @@ int main() {
 	Listen(server, 100);
 	
 	socklen_t addrlen = sizeof addr;
-	int fd = Accept(server, (struct sockaddr*) &addr, &addrlen);	
+	while(1) {
+		int fd = Accept(server, (struct sockaddr*) &addr, &addrlen);	
 	
-	ssize_t nread;
-	char buf[3];
-	nread = read(fd, buf, 3);
-	if(nread == -1) {
-		perror("read failed");
-		exit(EXIT_FAILURE);
-	}		
-	if(nread == 0) {
-		printf("END OF FILE occured\n");
-	}
-	
-	write(STDOUT_FILENO, buf, nread);
-	write(fd, "принял", 6);
+		ssize_t nread;
+		char buf[3];
+		nread = read(fd, buf, 3);
+		if(nread == -1) {
+			perror("read failed");
+			exit(EXIT_FAILURE);
+		}		
+		if(nread == 0) {
+			printf("END OF FILE occured\n");
+		}
 		
-	//sleep(1);	
-	
-	close(fd);
+		write(STDOUT_FILENO, buf, nread);
+		write(fd, "принял", 6);
+			
+		//sleep(1);	
+		
+		close(fd);
+	}
 	close(server);
 
 	return 0;
