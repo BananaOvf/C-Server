@@ -52,12 +52,16 @@ int main() {
 	addr.sin_port = htons(34543);	
 	Bind(server, (struct sockaddr*) &addr, sizeof addr);	
 	
-	Listen(server, 100);
+	char ip_str[INET_ADDRSTRLEN];
+	inet_ntop(AF_INET, &addr.sin_addr, ip_str, sizeof(ip_str));
+	printf("Server started on %s:%d\n", ip_str, ntohs(addr.sin_port));
+	printf("Waiting for connections...\n\n");
 	
+	Listen(server, 100);
+
 	socklen_t addrlen = sizeof addr;
 	while(1) {
-		int fd = Accept(server, (struct sockaddr*) &addr, &addrlen);	
-		printf("Client connected\n");	
+		int fd = Accept(server, (struct sockaddr*) &addr, &addrlen);
 
 		ssize_t nread = 0;
 		unsigned char buf[3];
