@@ -59,7 +59,7 @@ int main() {
 		int fd = Accept(server, (struct sockaddr*) &addr, &addrlen);	
 	
 		ssize_t nread = 0;
-		char buf[3];
+		unsigned char buf[3];
 		while(nread < sizeof(buf)) {
 			ssize_t r = read(fd, buf + nread, sizeof(buf) - nread);
 			if(r <= 0) {
