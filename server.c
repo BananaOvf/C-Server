@@ -57,15 +57,16 @@ int main() {
 	while(1) {
 		int fd = Accept(server, (struct sockaddr*) &addr, &addrlen);	
 	
-		ssize_t nread;
+		ssize_t nread = 0;
 		char buf[3];
-		nread = read(fd, buf, 3);
-		if(nread == -1) {
-			perror("read failed");
-			exit(EXIT_FAILURE);
-		}		
-		if(nread == 0) {
-			printf("END OF FILE occured\n");
+		while(nread < sizeof(buf)) {
+			ssize_t r = read(fd, buf + nread, sizeof(buf) - nread);
+			if(r <= 0) {
+				perror("read failed");
+				close(fd);
+				continue;
+			}
+			nread += r;
 		}
 		
 		write(STDOUT_FILENO, buf, nread);
