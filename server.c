@@ -57,7 +57,8 @@ int main() {
 	socklen_t addrlen = sizeof addr;
 	while(1) {
 		int fd = Accept(server, (struct sockaddr*) &addr, &addrlen);	
-	
+		printf("Client connected\n");	
+
 		ssize_t nread = 0;
 		unsigned char buf[3];
 		while(nread < sizeof(buf)) {
@@ -87,6 +88,17 @@ int main() {
 			continue;
 		}
 
+		printf("\n============= NEW CONNECTION ===============\n");
+		printf("3 bytes received: ");
+		for(int i = 0; i < 3; i++) printf("0x%02X ", (unsigned char)buf[i]);
+		printf("\n");
+		printf("Operation ID: %u\n", operationId);
+		printf("Faculty ID: %u\n", facultyId);
+		printf("EduForm: %s\n", eduForm ? "part-time" : "full-time");
+		printf("Answers:\n");
+		for(int i = 0; i < 8; i++) {
+			printf(" Answer %d: %u\n", i + 1, answers[i]);
+		}
 		
 		write(STDOUT_FILENO, buf, nread);
 		write(fd, "принял", 6);
