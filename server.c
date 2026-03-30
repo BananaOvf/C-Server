@@ -1,6 +1,7 @@
 #include <stdio.h>
 #include <unistd.h>
 #include <stdlib.h>
+#include <string.h>
 
 #include <sys/types.h>
 #include <sys/socket.h>
@@ -68,6 +69,24 @@ int main() {
 			}
 			nread += r;
 		}
+		
+		uint8_t operationId = (buf[0] >> 6) & 0x03;
+		uint8_t facultyId   = (buf[0] >> 1) & 0x1F;
+		uint8_t eduForm     = buf[0] & 0x01;
+
+		uint16_t answersBits = (uint16_t)buf[1] | ((uint16_t)buf[2] << 8);
+		uint8_t answers[8];
+		for(int i = 0; i < 8; i++) {
+			answers[i] = (answersBits >> (i * 2)) & 0x03;
+		}
+		
+		if(operationId != 1) {
+			const char *err_msg = "Invalid operationID";
+			write(fd, err_msg, strlen(err_msg));
+			close(fd);
+			continue;
+		}
+
 		
 		write(STDOUT_FILENO, buf, nread);
 		write(fd, "принял", 6);
