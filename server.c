@@ -100,8 +100,8 @@ int main() {
 			printf(" Answer %d: %u\n", i + 1, answers[i]);
 		}
 		
-		write(STDOUT_FILENO, buf, nread);
-		write(fd, "принял", 6);
+		const char *response = "OK";
+		write(fd, response, strlen(response));
 			
 		//sleep(1);	
 		
