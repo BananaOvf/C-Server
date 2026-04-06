@@ -9,6 +9,11 @@
 
 #include <netinet/in.h>
 
+#include <stdint.h>
+#include <sys/stat.h>
+#include <dirent.h>
+
+// ------------ SOCKET WRAPPERS ------------
 int Socket(int domain, int type, int protocol) {
 	int res = socket(domain, type, protocol);
 	if(res == -1) {
@@ -44,6 +49,51 @@ int Accept(int sockfd, struct sockaddr *addr, socklen_t *addrlen) {
 	return res;
 }
 
+// ------------ WORKING WITH STATISTICS -----------
+static volatile int accepting_polls = 1;
+
+void create_storage_dir() {
+	struct stat st = {0};
+	if(stat("storage", &st) == -1)
+		mkdir("storage", 0755);	
+}
+
+void get_filename(uint8_t facultyId, uint8_t eduForm, char *out, size_t out_size) {
+	int idx = (facultyId << 1) | eduForm;
+	snprintf(out, out_size, "storage/%d.bin", idx);
+}
+
+int load_stats(const char *fname, uint32_t stats[32]) {
+	FILE *f = fopen(fname, "rb");
+	if(!f) {
+		memset(stats, 0, 32 * sizeof(uint32_t));
+		f = fopen(fname, "wb");
+		if(!f) return -1;
+		fwrite(stats, sizeof(uint32_t), 32, f);
+		fclose(f);
+		return 0;
+	}
+	size_t n = fread(stats, sizeof(uint32_t), 32, f);
+	fclose(f);
+	if(n != 32) {
+		memset(stats, 0, 32 * sizeof(uint32_t));
+		f = fopen(fname, "wb");
+		if(!f) return -1;
+		fwrite(stats, sizeof(uint32_t), 32, f);
+		fclose(f);
+		return -1;
+	}
+	return 0;
+}
+
+int save_stats(const char *fname, const uint32_t stats[32]) {
+	FILE *f = fopen(fname, "wb");
+	if(!f) return -1;
+	fwrite(stats, sizeof(uint32_t), 32, f);
+	fclose(f);
+	return 0;
+}
+
 int main() {
 	int server = Socket(AF_INET, SOCK_STREAM, 0);
 
@@ -58,6 +108,8 @@ int main() {
 	printf("Waiting for connections...\n\n");
 	
 	Listen(server, 100);
+	
+	create_storage_dir();
 
 	socklen_t addrlen = sizeof addr;
 	while(1) {
