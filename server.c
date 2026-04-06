@@ -240,7 +240,7 @@ int main() {
 				write(fd, msg, strlen(msg));
 				break;
 			default:
-				write(fd, "Unknown op", 10);
+				write(fd, "Unknown operation", 17);
 				break;
 		}	
 		
