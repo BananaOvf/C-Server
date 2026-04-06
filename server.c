@@ -74,7 +74,7 @@ int main() {
 			}
 			nread += r;
 		}
-		
+	
 		uint8_t operationId = (buf[0] >> 6) & 0x03;
 		uint8_t facultyId   = (buf[0] >> 1) & 0x1F;
 		uint8_t eduForm     = buf[0] & 0x01;
@@ -85,7 +85,7 @@ int main() {
 			answers[i] = (answersBits >> (i * 2)) & 0x03;
 		}
 		
-		if(operationId != 1) {
+		if(operationId != 0) {
 			const char *err_msg = "Invalid operationID";
 			write(fd, err_msg, strlen(err_msg));
 			close(fd);
