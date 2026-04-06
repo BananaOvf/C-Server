@@ -138,6 +138,28 @@ void get_total_stats(uint32_t out[32]) {
 	closedir(d);
 }
 
+void reset_one_group(uint8_t facultyId, uint8_t eduForm) {
+	char fname[64];
+	get_filename(facultyId, eduForm, fname, sizeof(fname));
+	unlink(fname);
+}
+
+void reset_all_stats() {
+	DIR *d = opendir("storage");
+	if(!d) return;
+	struct dirent *entry;
+	while((entry = readdir(d)) != NULL) {
+		if(entry ->d_type != DT_REG) continue;
+		char *dot = strrchr(entry->d_name, '.');
+		if(dot && strcmp(dot, ".bin") == 0) {
+			char fpath[256];
+			snprintf(fpath, sizeof(fpath), "storage/%s", entry->d_name);
+			unlink(fpath);
+		}
+	}
+	closedir(d);
+}
+
 int main() {
 	int server = Socket(AF_INET, SOCK_STREAM, 0);
 
@@ -172,7 +194,7 @@ int main() {
 		uint8_t eduForm     = header & 0x01;
 		
 		switch(operationId) {
-			case 0: // receiving survey results
+			case 0: // processing survey results
 				unsigned char answers_buf[2];
 				r = read(fd, answers_buf, 2);
 				if(r != 2) {
@@ -195,6 +217,17 @@ int main() {
 					get_total_stats(stats);
 				else get_group_stats(facultyId, eduForm, stats);
 				write(fd, stats, sizeof(stats));
+				break;
+			case 2: // resetting statistics
+				if(facultyId == 31 && eduForm == 0) {
+					reset_all_stats();
+					const char *msg = "All stats reset";
+					write(fd, msg, strlen(msg));
+				} else {
+					reset_one_group(facultyId, eduForm);
+					const char *msg = "Group reset";
+					write(fd, msg, strlen(msg));
+				}
 				break;
 			default:
 				write(fd, "Unknown op", 10);
