@@ -106,6 +106,38 @@ int update_stats(uint8_t facultyId, uint8_t eduForm, const uint8_t answers[8]) {
 	return save_stats(fname, stats);
 }
 
+void get_group_stats(uint8_t facultyId, uint8_t eduForm, uint32_t out[32]) {
+	char fname[64];
+	get_filename(facultyId, eduForm, fname, sizeof(fname));
+	FILE *f = fopen(fname, "rb");
+	if(!f) {
+		memset(out, 0, 32 * sizeof(uint32_t));
+		return;
+	}
+	size_t n = fread(out, sizeof(uint32_t), 32, f);
+	fclose(f);
+	if(n != 32) memset(out, 0, 32 * sizeof(uint32_t));
+}
+
+void get_total_stats(uint32_t out[32]) {
+	memset(out, 0, 32 * sizeof(uint32_t));
+	DIR *d = opendir("storage");
+	if(!d) return;
+	struct dirent *entry;
+	while((entry = readdir(d)) != NULL) {
+		if(entry->d_type != DT_REG) continue;
+		char *dot = strrchr(entry->d_name, '.');
+		if(!dot || strcmp(dot, ".bin") != 0) continue;
+		char fpath[256];
+		snprintf(fpath, sizeof(fpath), "storage/%s", entry->d_name);
+		uint32_t stats[32];
+		if(load_stats(fpath, stats) == 0) {
+			for(int i = 0; i < 32; i++) out[i] += stats[i];
+		}
+	}
+	closedir(d);
+}
+
 int main() {
 	int server = Socket(AF_INET, SOCK_STREAM, 0);
 
@@ -157,6 +189,13 @@ int main() {
 					write(fd, "OK", 2);
 				else write(fd, "Storage error", 13);
 				break;				
+			case 1: // requesting statistics
+				uint32_t stats[32];
+				if(facultyId == 31 && eduForm == 0)
+					get_total_stats(stats);
+				else get_group_stats(facultyId, eduForm, stats);
+				write(fd, stats, sizeof(stats));
+				break;
 			default:
 				write(fd, "Unknown op", 10);
 				break;
