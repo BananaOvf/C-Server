@@ -195,6 +195,11 @@ int main() {
 		
 		switch(operationId) {
 			case 0: // processing survey results
+				if(!accepting_polls) {
+					const char *msg = "Server paused";
+					write(fd, msg, strlen(msg));
+					break;
+				}
 				unsigned char answers_buf[2];
 				r = read(fd, answers_buf, 2);
 				if(r != 2) {
@@ -228,6 +233,11 @@ int main() {
 					const char *msg = "Group reset";
 					write(fd, msg, strlen(msg));
 				}
+				break;
+			case 3: // pause switching
+				accepting_polls = !accepting_polls;
+				const char *msg = accepting_polls ? "Resumed" : "Paused";
+				write(fd, msg, strlen(msg));
 				break;
 			default:
 				write(fd, "Unknown op", 10);
