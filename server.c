@@ -94,6 +94,18 @@ int save_stats(const char *fname, const uint32_t stats[32]) {
 	return 0;
 }
 
+int update_stats(uint8_t facultyId, uint8_t eduForm, const uint8_t answers[8]) {
+	char fname[64];
+	get_filename(facultyId, eduForm, fname, sizeof(fname));
+	uint32_t stats[32];
+	if(load_stats(fname, stats) != 0) return -1;
+	for(int i = 0; i < 8; i++) {
+		int idx = answers[i] * 8 + i;
+		if(idx >= 0 && idx < 32) stats[idx]++;
+	}
+	return save_stats(fname, stats);
+}
+
 int main() {
 	int server = Socket(AF_INET, SOCK_STREAM, 0);
 
@@ -115,51 +127,40 @@ int main() {
 	while(1) {
 		int fd = Accept(server, (struct sockaddr*) &addr, &addrlen);
 
-		ssize_t nread = 0;
-		unsigned char buf[3];
-		while(nread < sizeof(buf)) {
-			ssize_t r = read(fd, buf + nread, sizeof(buf) - nread);
-			if(r <= 0) {
-				perror("read failed");
-				close(fd);
-				continue;
-			}
-			nread += r;
-		}
-	
-		uint8_t operationId = (buf[0] >> 6) & 0x03;
-		uint8_t facultyId   = (buf[0] >> 1) & 0x1F;
-		uint8_t eduForm     = buf[0] & 0x01;
-
-		uint16_t answersBits = (uint16_t)buf[1] | ((uint16_t)buf[2] << 8);
-		uint8_t answers[8];
-		for(int i = 0; i < 8; i++) {
-			answers[i] = (answersBits >> (i * 2)) & 0x03;
-		}
-		
-		if(operationId != 0) {
-			const char *err_msg = "Invalid operationID";
-			write(fd, err_msg, strlen(err_msg));
+		unsigned char header;
+		ssize_t r = read(fd, &header, 1);
+		if(r != 1) {
+			perror("read header failed");
 			close(fd);
 			continue;
 		}
-
-		printf("\n============= NEW CONNECTION ===============\n");
-		printf("3 bytes received: ");
-		for(int i = 0; i < 3; i++) printf("0x%02X ", (unsigned char)buf[i]);
-		printf("\n");
-		printf("Operation ID: %u\n", operationId);
-		printf("Faculty ID: %u\n", facultyId);
-		printf("EduForm: %s\n", eduForm ? "part-time" : "full-time");
-		printf("Answers:\n");
-		for(int i = 0; i < 8; i++) {
-			printf(" Answer %d: %u\n", i + 1, answers[i]);
-		}
+	
+		uint8_t operationId = (header >> 6) & 0x03;
+		uint8_t facultyId   = (header >> 1) & 0x1F;
+		uint8_t eduForm     = header & 0x01;
 		
-		const char *response = "OK";
-		write(fd, response, strlen(response));
-			
-		//sleep(1);	
+		switch(operationId) {
+			case 0: // receiving survey results
+				unsigned char answers_buf[2];
+				r = read(fd, answers_buf, 2);
+				if(r != 2) {
+					const char *err = "Incomplete answers";
+					write(fd, err, strlen(err));
+					break;
+				}
+				uint16_t answersBits = (uint16_t)answers_buf[0] | ((uint16_t)answers_buf[1] << 8);
+				uint8_t answers[8];
+				for(int i = 0; i < 8; i++) {
+					answers[i] = (answersBits >> (i * 2)) & 0x03;
+				}
+				if(update_stats(facultyId, eduForm, answers) == 0)
+					write(fd, "OK", 2);
+				else write(fd, "Storage error", 13);
+				break;				
+			default:
+				write(fd, "Unknown op", 10);
+				break;
+		}	
 		
 		close(fd);
 	}
